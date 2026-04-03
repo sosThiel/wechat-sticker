@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微信贴纸 WeChat Sticker Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1c1c1e;
+  --surface2: #2a2a2d;
+  --border: #38383d;
+  --accent: #ff3b30;
+  --accent2: #ffd60a;
+  --green: #30d158;
+  --text: #f5f5f7;
+  --muted: #8e8e93;
+  --radius: 14px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15,15,15,0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.logo .zh { color: var(--accent); }
+.logo .tag {
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 2px 8px; margin-left: 8px; letter-spacing: 1px; text-transform: uppercase;
+}
+
+.app {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 20px;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* ── STEPS ── */
+.steps { display: flex; flex-direction: column; gap: 16px; }
+
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.step.active { border-color: var(--accent); }
+.step.done { border-color: var(--green); }
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+}
+.step-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--muted);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.step.active .step-num { background: var(--accent); border-color: var(--accent); color: white; }
+.step.done .step-num { background: var(--green); border-color: var(--green); color: white; }
+.step-title { font-size: 15px; font-weight: 700; }
+.step-sub { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+.step-body { padding: 0 20px 20px; }
+
+/* Upload */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+  background: var(--surface2);
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--accent);
+  background: rgba(255,59,48,0.06);
+}
+.upload-zone input {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon { font-size: 40px; margin-bottom: 8px; }
+.upload-lbl { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.upload-lbl strong { color: var(--text); display: block; font-size: 15px; }
+
+.thumb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: rgba(48,209,88,0.07);
+  border: 1px solid rgba(48,209,88,0.25);
+  border-radius: 10px;
+  margin-top: 0;
+}
+.thumb-row img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; }
+.thumb-info { flex: 1; font-size: 13px; }
+.thumb-info .fname { font-weight: 600; color: var(--green); }
+.thumb-info .fsize { color: var(--muted); font-size: 11px; }
+.btn-change {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px; font-size: 12px;
+  color: var(--muted); cursor: pointer; font-family: inherit;
+  transition: all 0.15s; position: relative; overflow: hidden;
+}
+.btn-change input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.btn-change:hover { border-color: var(--text); color: var(--text); }
+
+/* Mode tabs */
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.mode-tab {
+  flex: 1; padding: 9px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.mode-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+.mode-tab:not(.active):hover { border-color: var(--text); color: var(--text); }
+
+.mode-panel { display: none; }
+.mode-panel.active { display: block; }
+
+/* Inputs */
+textarea, input[type="text"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 15px;
+  font-family: 'Noto Sans SC', 'Outfit', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: none;
+}
+textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+
+.field-label {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px; display: block;
+}
+
+/* Emoji bar */
+.emoji-bar {
+  display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+}
+.emoji-btn {
+  font-size: 24px;
+  width: 42px; height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  line-height: 1;
+}
+.emoji-btn:hover { border-color: var(--accent2); background: rgba(255,214,10,0.08); transform: scale(1.1); }
+
+/* AI button */
+.btn-ai {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-ai:hover:not(:disabled) { background: #d4302a; }
+.btn-ai:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; }
+
+.spinner {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Proposals */
+.proposals { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.proposal {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  color: var(--text);
+}
+.proposal:hover { border-color: var(--accent2); background: rgba(255,214,10,0.05); }
+.proposal.selected { border-color: var(--green); background: rgba(48,209,88,0.06); }
+.proposal .zh { font-size: 17px; font-weight: 900; font-family: 'Noto Sans SC', sans-serif; display: block; }
+.proposal .de { font-size: 11px; color: var(--muted); margin-top: 3px; display: block; }
+
+.error-msg { color: #ff6b6b; font-size: 13px; margin-top: 8px; }
+
+/* Text controls */
+.final-text-wrap { margin-bottom: 14px; }
+
+.controls-row {
+  display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+}
+
+/* Align buttons */
+.align-btns { display: flex; gap: 6px; }
+.align-btn {
+  flex: 1; padding: 8px 4px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+.align-btn:hover { border-color: var(--text); color: var(--text); }
+.align-btn.active { background: var(--accent2); border-color: var(--accent2); color: #000; }
+
+/* Position buttons */
+.pos-btns { display: flex; gap: 6px; }
+.pos-btn {
+  flex: 1; padding: 8px 4px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+.pos-btn:hover { border-color: var(--text); color: var(--text); }
+.pos-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+
+/* Download */
+.btn-download {
+  width: 100%;
+  padding: 16px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+.btn-download:hover:not(:disabled) { background: #28b84a; transform: translateY(-1px); }
+.btn-download:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+
+/* ── PREVIEW ── */
+.preview-col {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.canvas-wrap {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,0.6);
+  background: repeating-conic-gradient(#1e1e1e 0% 25%, #181818 0% 50%) 0 0 / 16px 16px;
+  aspect-ratio: 1;
+}
+canvas { width: 100%; height: 100%; display: block; }
+
+.preview-note {
+  font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6;
+}
+.wechat-hint {
+  background: rgba(48,209,88,0.07);
+  border: 1px solid rgba(48,209,88,0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #5de07f;
+  text-align: center;
+  line-height: 1.7;
+  width: 100%;
+}
+
+/* Dividers */
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr; }
+  .preview-col { position: static; order: -1; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="zh">贴纸工厂</span> Sticker Maker
+    <span class="tag">WeChat</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- LEFT: Steps -->
+  <div class="steps">
+
+    <!-- STEP 1: Foto -->
+    <div class="step active" id="step1">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">📷 Foto auswählen</div>
+        <div class="step-sub" id="step1-sub">Kein Foto</div>
+      </div>
+      <div class="step-body">
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept="image/*" capture="environment">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-lbl">
+            <strong>Foto hochladen</strong>
+            Galerie, Kamera oder Drag & Drop
+          </div>
+        </div>
+        <div id="thumbRow" style="display:none" class="thumb-row">
+          <img id="thumbImg" src="" alt="">
+          <div class="thumb-info">
+            <div class="fname" id="thumbName"></div>
+            <div class="fsize" id="thumbSize"></div>
+          </div>
+          <button class="btn-change">
+            <input type="file" id="fileInput2" accept="image/*">
+            Ändern
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Text / KI -->
+    <div class="step" id="step2">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">✍️ Text erstellen</div>
+      </div>
+      <div class="step-body">
+
+        <!-- Mode tabs -->
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="translate">🔄 Übersetzen</button>
+          <button class="mode-tab" data-mode="generate">✨ Vorschläge</button>
+          <button class="mode-tab" data-mode="manual">✏️ Direkt</button>
+        </div>
+
+        <!-- Translate -->
+        <div class="mode-panel active" id="panel-translate">
+          <span class="field-label">Deutschen Text eingeben</span>
+          <textarea id="deInput" rows="3" placeholder="z.B. Ich bin so müde!&#10;Das ist zu lustig 😂&#10;Keine Ahnung..."></textarea>
+          <button class="btn-ai" id="translateBtn">
+            🔄 Ins Chinesische übersetzen
+          </button>
+          <div class="proposals" id="translateResult"></div>
+        </div>
+
+        <!-- Generate -->
+        <div class="mode-panel" id="panel-generate">
+          <span class="field-label">Stichworte (Deutsch oder Englisch)</span>
+          <input type="text" id="keywordInput" placeholder="z.B. müde, Montag, Büro, Chef">
+          <button class="btn-ai" id="generateBtn">
+            ✨ 3 Meme-Vorschläge generieren
+          </button>
+          <div class="proposals" id="generateResult"></div>
+        </div>
+
+        <!-- Manual -->
+        <div class="mode-panel" id="panel-manual">
+          <span class="field-label">Text direkt eingeben (Chinesisch / Emoji)</span>
+          <textarea id="manualInput" rows="3" placeholder="哈哈哈太好笑了 😂&#10;我不行了...&#10;累成狗了 🐶"></textarea>
+        </div>
+
+        <div id="aiError" class="error-msg"></div>
+
+        <div class="divider"></div>
+
+        <!-- Final text + emoji -->
+        <div class="final-text-wrap">
+          <span class="field-label">Sticker-Text (bearbeitbar)</span>
+          <textarea id="finalText" rows="3" placeholder="KI-Text erscheint hier, oder direkt eingeben..."></textarea>
+          <div class="emoji-bar">
+            <button class="emoji-btn" title="Lachen" data-em="😂">😂</button>
+            <button class="emoji-btn" title="Weinen" data-em="😭">😭</button>
+            <button class="emoji-btn" title="Verlegen" data-em="😅">😅</button>
+            <button class="emoji-btn" title="Cool" data-em="😎">😎</button>
+            <button class="emoji-btn" title="Wütend" data-em="😡">😡</button>
+            <button class="emoji-btn" title="Liebe" data-em="🥰">🥰</button>
+          </div>
+        </div>
+
+        <!-- Position & Align -->
+        <span class="field-label">Textposition</span>
+        <div class="pos-btns" id="posBtns">
+          <button class="pos-btn" data-pos="top">⬆ Oben</button>
+          <button class="pos-btn active" data-pos="bottom">⬇ Unten</button>
+          <button class="pos-btn" data-pos="center">● Mitte</button>
+        </div>
+
+        <div style="height:10px"></div>
+        <span class="field-label">Textausrichtung</span>
+        <div class="align-btns" id="alignBtns">
+          <button class="align-btn active" data-align="left">⬛ Links</button>
+          <button class="align-btn" data-align="center">⬛ Mitte</button>
+          <button class="align-btn" data-align="right">⬛ Rechts</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STEP 3: Download -->
+    <div class="step" id="step3">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">⬇️ Speichern</div>
+      </div>
+      <div class="step-body">
+        <button class="btn-download" id="downloadBtn" disabled>
+          Als WeChat-Sticker speichern (.png)
+        </button>
+        <div class="wechat-hint" style="margin-top:12px">
+          ✅ WeChat → 表情 → ＋ → Aus Fotomediathek<br>
+          PNG importieren · 500×500px
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div class="preview-col">
+    <div class="canvas-wrap">
+      <canvas id="stickerCanvas" width="500" height="500"></canvas>
+    </div>
+    <div class="preview-note">Vorschau · 500×500px · WeChat-Format</div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('stickerCanvas');
+const ctx = canvas.getContext('2d');
+const SIZE = 500;
+canvas.width = canvas.height = SIZE;
+
+let img = null;
+let textPos = 'bottom';
+let textAlign = 'center';
+
+// ── DRAW ──
+function wrapText(text, maxWidth) {
+  // Split on user newlines first, then wrap long lines
+  const paragraphs = text.split('\n');
+  const lines = [];
+  paragraphs.forEach(para => {
+    if (!para.trim()) { lines.push(''); return; }
+    // Try word by word (works for latin). For CJK, char by char.
+    const words = para.split('');
+    let current = '';
+    for (let i = 0; i < words.length; i++) {
+      const char = words[i];
+      const test = current + char;
+      if (ctx.measureText(test).width > maxWidth && current.length > 0) {
+        lines.push(current);
+        current = char;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+  });
+  return lines;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  if (img) {
+    const scale = Math.max(SIZE / img.width, SIZE / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+  } else {
+    ctx.fillStyle = '#1c1c1e';
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.font = '60px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🖼️', SIZE / 2, SIZE / 2 - 18);
+    ctx.font = '600 16px Outfit, sans-serif';
+    ctx.fillStyle = '#555';
+    ctx.fillText('Foto hochladen →', SIZE / 2, SIZE / 2 + 40);
+    return;
+  }
+
+  const text = document.getElementById('finalText').value.trim();
+  if (!text) return;
+
+  // Font sizing: start large, shrink if needed
+  const PAD = 28;
+  const maxW = SIZE - PAD * 2;
+
+  let fs = 58;
+  ctx.font = `900 ${fs}px "Noto Sans SC", sans-serif`;
+
+  // Wrap
+  let lines = wrapText(text, maxW);
+
+  // Shrink font if too many lines
+  while (lines.length > 5 && fs > 22) {
+    fs -= 4;
+    ctx.font = `900 ${fs}px "Noto Sans SC", sans-serif`;
+    lines = wrapText(text, maxW);
+  }
+
+  const lineH = fs * 1.3;
+  const totalH = lines.length * lineH;
+  const pad = 24;
+
+  // Y start
+  let startY;
+  if (textPos === 'top') startY = pad;
+  else if (textPos === 'center') startY = (SIZE - totalH) / 2;
+  else startY = SIZE - totalH - pad;
+
+  // X align
+  let x;
+  if (textAlign === 'left') { ctx.textAlign = 'left'; x = PAD; }
+  else if (textAlign === 'right') { ctx.textAlign = 'right'; x = SIZE - PAD; }
+  else { ctx.textAlign = 'center'; x = SIZE / 2; }
+
+  ctx.textBaseline = 'top';
+
+  lines.forEach((line, i) => {
+    if (!line) return;
+    const ly = startY + i * lineH;
+    // White outline for readability on any background
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = fs * 0.15;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(line, x, ly);
+    ctx.fillStyle = '#000000';
+    ctx.fillText(line, x, ly);
+  });
+}
+
+// ── IMAGE LOAD ──
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const url = URL.createObjectURL(file);
+  const i = new Image();
+  i.onload = () => {
+    img = i;
+    // Thumb
+    document.getElementById('uploadZone').style.display = 'none';
+    const tr = document.getElementById('thumbRow');
+    tr.style.display = 'flex';
+    document.getElementById('thumbImg').src = url;
+    document.getElementById('thumbName').textContent = file.name;
+    document.getElementById('thumbSize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+    document.getElementById('step1-sub').textContent = '✓ Geladen';
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step1').classList.add('done');
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('downloadBtn').disabled = false;
+    draw();
+  };
+  i.src = url;
+}
+
+['fileInput', 'fileInput2'].forEach(id => {
+  document.getElementById(id).addEventListener('change', e => loadFile(e.target.files[0]));
+});
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag');
+  loadFile(e.dataTransfer.files[0]);
+});
+
+// ── MODE TABS ──
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.mode).classList.add('active');
+  });
+});
+
+// Manual input live
+document.getElementById('manualInput').addEventListener('input', e => {
+  document.getElementById('finalText').value = e.target.value;
+  draw();
+});
+
+// Final text live
+document.getElementById('finalText').addEventListener('input', () => draw());
+
+// ── EMOJI ──
+document.querySelectorAll('.emoji-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ta = document.getElementById('finalText');
+    const pos = ta.selectionStart || ta.value.length;
+    ta.value = ta.value.slice(0, pos) + btn.dataset.em + ta.value.slice(pos);
+    ta.dispatchEvent(new Event('input'));
+  });
+});
+
+// ── POSITION ──
+document.querySelectorAll('.pos-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    textPos = btn.dataset.pos;
+    draw();
+  });
+});
+
+// ── ALIGN ──
+document.querySelectorAll('.align-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    textAlign = btn.dataset.align;
+    draw();
+  });
+});
+
+// ── AI CALL ──
+async function callAI(systemPrompt, userPrompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content.map(b => b.text || '').join('');
+}
+
+function setLoading(btn, on, originalHTML) {
+  if (on) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> KI denkt nach...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
+}
+
+function addProposal(zh, de, container) {
+  const btn = document.createElement('button');
+  btn.className = 'proposal';
+  btn.innerHTML = `<span class="zh">${zh}</span><span class="de">${de}</span>`;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.proposal').forEach(p => p.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('finalText').value = zh;
+    document.getElementById('step2').classList.add('done');
+    draw();
+  });
+  container.appendChild(btn);
+}
+
+// Translate
+const translateBtn = document.getElementById('translateBtn');
+const translateBtnHTML = translateBtn.innerHTML;
+translateBtn.addEventListener('click', async () => {
+  const text = document.getElementById('deInput').value.trim();
+  if (!text) return;
+  const result = document.getElementById('translateResult');
+  document.getElementById('aiError').textContent = '';
+  result.innerHTML = '';
+  setLoading(translateBtn, true, translateBtnHTML);
+  try {
+    const raw = await callAI(
+      'Du bist Experte für chinesische Meme-Kultur und WeChat-Sticker. Antworte NUR mit einem JSON-Array, ohne Markdown-Codeblöcke, ohne Kommentare.',
+      `Übersetze diesen deutschen Text ins Chinesische – lustig, natürlich, wie echter WeChat-Sticker (kein Google-Translate-Stil). Gib 2 Varianten: eine wörtlichere und eine witzigere/freiere. Text: "${text}"\n\nFormat: [{"zh":"...","de":"..."},{"zh":"...","de":"..."}]`
+    );
+    const items = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    items.forEach(item => addProposal(item.zh, item.de, result));
+    translateBtn.innerHTML = '🔄 Nochmal übersetzen';
+  } catch(e) {
+    document.getElementById('aiError').textContent = '⚠️ Fehler: ' + e.message;
+    translateBtn.innerHTML = translateBtnHTML;
+  }
+  translateBtn.disabled = false;
+});
+
+// Generate
+const generateBtn = document.getElementById('generateBtn');
+const generateBtnHTML = generateBtn.innerHTML;
+generateBtn.addEventListener('click', async () => {
+  const kw = document.getElementById('keywordInput').value.trim();
+  if (!kw) return;
+  const result = document.getElementById('generateResult');
+  document.getElementById('aiError').textContent = '';
+  result.innerHTML = '';
+  setLoading(generateBtn, true, generateBtnHTML);
+  try {
+    const raw = await callAI(
+      'Du bist Experte für chinesische Meme-Kultur, WeChat-Sticker und viralen Humor. Antworte NUR mit einem JSON-Array, ohne Markdown-Codeblöcke, ohne Kommentare.',
+      `Erstelle 3 kurze, witzige WeChat-Sticker-Texte auf Chinesisch zu diesen Stichworten: "${kw}". Regeln: max 2 Zeilen, knackig, Meme-Style, Internet-Slang erlaubt. Format: [{"zh":"...","de":"deutsche Bedeutung"},{"zh":"...","de":"..."},{"zh":"...","de":"..."}]`
+    );
+    const items = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    items.forEach(item => addProposal(item.zh, item.de, result));
+    generateBtn.innerHTML = '✨ Neue Vorschläge';
+  } catch(e) {
+    document.getElementById('aiError').textContent = '⚠️ Fehler: ' + e.message;
+    generateBtn.innerHTML = generateBtnHTML;
+  }
+  generateBtn.disabled = false;
+});
+
+// ── DOWNLOAD ──
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = 'wechat-sticker.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+draw();
+</script>
+</body>
+</html>
